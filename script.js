@@ -27,14 +27,19 @@ async function loadProducts() {
     products.forEach(product => {
         const productItem = document.createElement('div');
         productItem.classList.add('product-item');
-        
+
         productItem.innerHTML = `
-            <p class="product-name">${product.name} ${product.weight} г</p>
-            <p class="product-kbiju">КБЖУ: ${product.calories} / ${product.proteins} / ${product.fats}</p>
-            <p class="product-calories">${product.calories} Ккал</p>
-            <button class="delete-btn" data-id="${product.id}">×</button>
+            <div class="product-row product-main-row">
+                <span class="product-name">${product.name}</span>
+                <span class="product-weight">${product.weight} г</span>
+                <button class="delete-btn" data-id="${product.id}" aria-label="Удалить продукт">×</button>
+            </div>
+            <div class="product-row product-sub-row">
+                <span class="product-kbiju">${product.calories} · ${product.proteins} · ${product.fats}</span>
+                <span class="product-calories">${product.calories} Ккал</span>
+            </div>
         `;
-        
+
         productList.appendChild(productItem);
     });
 }
