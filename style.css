@@ -279,6 +279,47 @@ body {
     cursor: pointer;
 }
 
+.scanner-preview {
+    position: relative;
+    margin-top: 12px;
+    border-radius: 16px;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+    opacity: 0;
+    background: #0b1220;
+}
+
+.scanner-preview.visible {
+    max-height: 340px;
+    opacity: 1;
+}
+
+.scanner-preview video {
+    width: 100%;
+    display: block;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+}
+
+.scanner-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 12px;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.55) 100%);
+    gap: 8px;
+}
+
+.scanner-overlay p {
+    margin: 0;
+    font-weight: 700;
+    color: #e2e8f0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
 .scanner-title {
     margin: 0;
     font-weight: 700;

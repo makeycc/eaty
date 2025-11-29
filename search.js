@@ -31,6 +31,12 @@ const MOCK_PRODUCTS = [
     },
 ];
 
+const BARCODE_FORMATS = ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'qr_code'];
+
+let cameraStream;
+let scanning = false;
+let barcodeDetector;
+
 function getDateParam() {
     const params = new URLSearchParams(window.location.search);
     return params.get('date') || localStorage.getItem('selectedDate') || new Date().toISOString().slice(0, 10);
@@ -115,15 +121,90 @@ function performSearch(rawQuery) {
     renderResults(matches, list);
 }
 
-function simulateScan() {
+function stopScan() {
+    scanning = false;
+    document.getElementById('scanner-preview')?.classList.remove('visible');
+    if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+        cameraStream = null;
+    }
+    const video = document.getElementById('scan-video');
+    if (video) video.srcObject = null;
+}
+
+function persistFoundProduct(barcode) {
+    const match = MOCK_PRODUCTS.find((item) => item.barcode === barcode);
+    const payload =
+        match || {
+            id: `barcode-${barcode}`,
+            name: '',
+            barcode,
+            caloriesPer100: 0,
+            proteinsPer100: 0,
+            fatsPer100: 0,
+            carbsPer100: 0,
+            defaultWeight: 100,
+        };
+
+    localStorage.setItem('selectedProduct', JSON.stringify(payload));
+    const manualFlag = match ? '' : '&manual=1';
+    window.location.href = `product.html?date=${getDateParam()}&barcode=${barcode}${manualFlag}`;
+}
+
+async function scanFrame(video) {
+    if (!scanning || !barcodeDetector) return;
+    try {
+        const detected = await barcodeDetector.detect(video);
+        if (detected.length) {
+            const code = detected[0]?.rawValue;
+            if (code) {
+                document.getElementById('scan-status').textContent = `Код: ${code}`;
+                stopScan();
+                persistFoundProduct(code);
+                return;
+            }
+        }
+    } catch (e) {
+        console.error('Ошибка сканирования', e);
+        document.getElementById('scan-status').textContent = 'Не удалось считать код';
+    }
+
+    if (scanning) requestAnimationFrame(() => scanFrame(video));
+}
+
+async function startBarcodeScan() {
     const status = document.getElementById('scan-status');
-    status.textContent = 'Сканируем...';
-    const result = MOCK_PRODUCTS[Math.floor(Math.random() * MOCK_PRODUCTS.length)];
-    setTimeout(() => {
-        status.textContent = 'Код считан';
-        localStorage.setItem('selectedProduct', JSON.stringify(result));
-        window.location.href = `product.html?date=${getDateParam()}&barcode=${result.barcode}`;
-    }, 600);
+    const preview = document.getElementById('scanner-preview');
+    const video = document.getElementById('scan-video');
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+        status.textContent = 'Доступ к камере не поддерживается';
+        return;
+    }
+
+    if (!('BarcodeDetector' in window)) {
+        status.textContent = 'Сканирование штрихкодов не поддерживается';
+        return;
+    }
+
+    if (!barcodeDetector) {
+        barcodeDetector = new window.BarcodeDetector({ formats: BARCODE_FORMATS });
+    }
+
+    try {
+        stopScan();
+        scanning = true;
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = cameraStream;
+        await video.play();
+        preview.classList.add('visible');
+        status.textContent = 'Наведите камеру на штрихкод';
+        requestAnimationFrame(() => scanFrame(video));
+    } catch (e) {
+        console.error('Ошибка доступа к камере', e);
+        status.textContent = 'Нет доступа к камере';
+        stopScan();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -150,8 +231,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHistory(historyContainer);
     });
 
-    document.getElementById('scan-btn')?.addEventListener('click', simulateScan);
+    document.getElementById('scan-btn')?.addEventListener('click', startBarcodeScan);
+    document.getElementById('stop-scan')?.addEventListener('click', stopScan);
     document.getElementById('back-home')?.addEventListener('click', () => {
+        stopScan();
         window.location.href = 'index.html';
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stopScan();
     });
 });
