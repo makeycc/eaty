@@ -31,6 +31,9 @@ const MOCK_PRODUCTS = [
     },
 ];
 
+const ZXING_BUNDLE_PATH = 'vendor/zxing-browser.min.js';
+let zxingScriptPromise = null;
+
 function getDateParam() {
     const params = new URLSearchParams(window.location.search);
     return params.get('date') || localStorage.getItem('selectedDate') || new Date().toISOString().slice(0, 10);
@@ -115,6 +118,74 @@ function performSearch(rawQuery) {
     renderResults(matches, list);
 }
 
+function ensureZXingBundle() {
+    if (window.ZXingBrowser) return Promise.resolve();
+    if (!zxingScriptPromise) {
+        zxingScriptPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = ZXING_BUNDLE_PATH;
+            script.async = true;
+            script.onload = () => (window.ZXingBrowser ? resolve() : reject(new Error('ZXingBrowser unavailable')));
+            script.onerror = (err) => reject(err);
+            document.head.appendChild(script);
+        });
+    }
+    return zxingScriptPromise;
+}
+
+function handleBarcodeResult(barcodeText) {
+    const status = document.getElementById('scan-status');
+    if (!barcodeText) {
+        if (status) status.textContent = 'Код не распознан';
+        return;
+    }
+
+    const matched = MOCK_PRODUCTS.find((item) => item.barcode === barcodeText);
+    if (matched) {
+        localStorage.setItem('selectedProduct', JSON.stringify(matched));
+    }
+
+    const date = getDateParam();
+    window.location.href = `product.html?date=${date}&barcode=${encodeURIComponent(barcodeText)}`;
+}
+
+async function startBarcodeScan() {
+    const status = document.getElementById('scan-status');
+    if (status) status.textContent = 'Открываем камеру...';
+
+    try {
+        await ensureZXingBundle();
+    } catch (e) {
+        console.error('ZXing bundle failed to load', e);
+        if (status) status.textContent = 'Сканер не поддерживается';
+        return;
+    }
+
+    if (!window.ZXingBrowser?.BrowserMultiFormatReader) {
+        if (status) status.textContent = 'Сканер не поддерживается';
+        return;
+    }
+
+    const reader = new window.ZXingBrowser.BrowserMultiFormatReader();
+    const video = document.createElement('video');
+    video.setAttribute('playsinline', 'true');
+    video.style.display = 'none';
+    document.body.appendChild(video);
+
+    if (status) status.textContent = 'Сканируем...';
+    try {
+        const result = await reader.decodeOnceFromVideoDevice(undefined, video);
+        if (status) status.textContent = 'Код считан';
+        handleBarcodeResult(result?.text);
+    } catch (err) {
+        console.error('Не удалось открыть камеру или прочитать код', err);
+        if (status) status.textContent = 'Не удалось открыть камеру';
+    } finally {
+        reader.reset();
+        video.remove();
+    }
+}
+
 function simulateScan() {
     const status = document.getElementById('scan-status');
     status.textContent = 'Сканируем...';
@@ -150,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHistory(historyContainer);
     });
 
-    document.getElementById('scan-btn')?.addEventListener('click', simulateScan);
+    document.getElementById('scan-btn')?.addEventListener('click', startBarcodeScan);
     document.getElementById('back-home')?.addEventListener('click', () => {
         window.location.href = 'index.html';
     });
