@@ -37,6 +37,7 @@ let cameraStream;
 let scanning = false;
 let barcodeDetector;
 let zxingReader;
+let zxingLoadingPromise;
 
 function getDateParam() {
     const params = new URLSearchParams(window.location.search);
@@ -162,6 +163,59 @@ function stopScan() {
     if (video) video.srcObject = null;
 }
 
+async function ensureZXingBundle() {
+    if (window.ZXingBrowser?.BrowserMultiFormatReader) {
+        zxingReader = zxingReader || new window.ZXingBrowser.BrowserMultiFormatReader();
+        return true;
+    }
+
+    if (!zxingLoadingPromise) {
+        zxingLoadingPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js';
+            script.async = true;
+            script.onload = () => {
+                if (window.ZXingBrowser?.BrowserMultiFormatReader) {
+                    zxingReader = zxingReader || new window.ZXingBrowser.BrowserMultiFormatReader();
+                    resolve(true);
+                } else {
+                    reject(new Error('ZXing bundle unavailable'));
+                }
+            };
+            script.onerror = () => reject(new Error('Не удалось загрузить ZXing'));
+            document.head.appendChild(script);
+        }).catch((e) => {
+            console.error('ZXing load failed', e);
+            return false;
+        });
+    }
+
+    return zxingLoadingPromise;
+}
+
+async function requestCameraPermission(statusEl) {
+    if (!navigator.mediaDevices?.getUserMedia) {
+        statusEl.textContent = 'Доступ к камере не поддерживается';
+        return false;
+    }
+
+    try {
+        const permission = navigator.permissions?.query ? await navigator.permissions.query({ name: 'camera' }) : null;
+        if (permission?.state === 'denied') {
+            statusEl.textContent = 'Разрешите доступ к камере в настройках устройства';
+            return false;
+        }
+
+        const testStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        testStream.getTracks().forEach((track) => track.stop());
+        return true;
+    } catch (e) {
+        console.error('Permission error', e);
+        statusEl.textContent = 'Разрешите доступ к камере';
+        return false;
+    }
+}
+
 async function findKnownProduct(barcode) {
     const catalogMatch = MOCK_PRODUCTS.find((item) => item.barcode === barcode);
     if (catalogMatch) return catalogMatch;
@@ -246,29 +300,28 @@ async function startBarcodeScan() {
     const preview = document.getElementById('scanner-preview');
     const video = document.getElementById('scan-video');
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-        status.textContent = 'Доступ к камере не поддерживается';
-        return;
-    }
-
     const hasBarcodeDetector = 'BarcodeDetector' in window;
     if (!barcodeDetector && hasBarcodeDetector) {
         barcodeDetector = new window.BarcodeDetector({ formats: BARCODE_FORMATS });
     }
 
     if (!hasBarcodeDetector) {
-        if (window.ZXingBrowser?.BrowserMultiFormatReader) {
-            zxingReader = zxingReader || new window.ZXingBrowser.BrowserMultiFormatReader();
-        } else {
+        const loaded = await ensureZXingBundle();
+        if (!loaded) {
             status.textContent = 'Сканирование штрихкодов не поддерживается';
             return;
         }
     }
 
     try {
+        const permissionGranted = await requestCameraPermission(status);
+        if (!permissionGranted) return;
+
         stopScan();
         scanning = true;
-        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } },
+        });
         video.srcObject = cameraStream;
         await video.play();
         preview.classList.add('visible');
