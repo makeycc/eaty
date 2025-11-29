@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главный экран</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1>Сегодня</h1>
+        </div>
+
+        <!-- Слайдер недели -->
+        <div class="slider">
+            <button class="slider-btn" id="prev-day">←</button>
+            <div class="slider-days">
+                <button class="day" id="day-1">П</button>
+                <button class="day" id="day-2">В</button>
+                <button class="day" id="day-3">С</button>
+                <button class="day" id="day-4">Ч</button>
+                <button class="day" id="day-5">П</button>
+                <button class="day" id="day-6">С</button>
+                <button class="day" id="day-7">В</button>
+            </div>
+            <button class="slider-btn" id="next-day">→</button>
+        </div>
+
+        <!-- КБЖУ статистика -->
+        <div class="kbiju-stats">
+            <div class="kbiju-item">
+                <span class="kbiju-label">Белки</span>
+                <span class="kbiju-value">140</span>
+            </div>
+            <div class="kbiju-item">
+                <span class="kbiju-label">Жиры</span>
+                <span class="kbiju-value">120</span>
+            </div>
+            <div class="kbiju-item">
+                <span class="kbiju-label">Углеводы</span>
+                <span class="kbiju-value">450</span>
+            </div>
+            <div class="kbiju-item">
+                <span class="kbiju-label">Ккал</span>
+                <span class="kbiju-value">3635</span>
+            </div>
+        </div>
+
+        <!-- Список добавленных продуктов -->
+        <div class="product-list">
+            <div class="product-item">
+                <p class="product-name">Грудки Цыпленка-Бройлера Кубик 120 г</p>
+                <p class="product-kbiju">280 · 240 · 900</p>
+                <p class="product-calories">3635 Ккал</p>
+                <button class="delete-btn">×</button>
+            </div>
+            <div class="product-item">
+                <p class="product-name">Global Village Булгур 80 г</p>
+                <p class="product-kbiju">280 · 240 · 900</p>
+                <p class="product-calories">3635 Ккал</p>
+                <button class="delete-btn">×</button>
+            </div>
+        </div>
+
+        <!-- Кнопка добавления нового продукта -->
+        <button class="add-product-btn">Добавить продукт</button>
+        <button class="go-to-search-btn">Поиск продукта</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

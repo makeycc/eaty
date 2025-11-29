@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поиск и ручной ввод</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="search-container">
+        <h1>Поиск или добавление продукта</h1>
+        
+        <div class="search-input">
+            <input type="text" id="product-search" placeholder="Поиск по названию или штрих-коду" />
+            <button id="search-btn">Поиск</button>
+        </div>
+        
+        <div class="search-results">
+            <h3>Результаты поиска:</h3>
+            <ul id="results-list">
+                <!-- Результаты поиска продуктов -->
+            </ul>
+        </div>
+        
+        <button class="manual-entry-btn" id="manual-entry">Ручной ввод</button>
+    </div>
+
+    <script src="search.js"></script>
+</body>
+</html>
