@@ -32,7 +32,7 @@ const PRODUCT_CATALOG = [
 ];
 
 const DEFAULT_PRODUCT = {
-    id: 'manual-entry',
+    id: `manual-${Date.now()}`,
     name: 'Новый продукт',
     caloriesPer100: 0,
     proteinsPer100: 0,
@@ -41,135 +41,202 @@ const DEFAULT_PRODUCT = {
     defaultWeight: 100,
 };
 
-const weightInput = document.getElementById('product-weight');
-const caloriesInput = document.getElementById('product-calories');
-const proteinsInput = document.getElementById('product-proteins');
-const fatsInput = document.getElementById('product-fats');
-const carbsInput = document.getElementById('product-carbs');
-const saveButton = document.getElementById('save-product');
-const deleteButton = document.getElementById('delete-product');
-const productTitle = document.querySelector('.product-container h1');
-
-let baseProduct = { ...DEFAULT_PRODUCT };
-
 function normalizeNumber(value) {
-    const normalized = parseFloat(value);
-    return Number.isFinite(normalized) ? normalized : 0;
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function readDiary() {
+    try {
+        return JSON.parse(localStorage.getItem('diaryEntries')) || {};
+    } catch (e) {
+        console.error('Не удалось прочитать дневник', e);
+        return {};
+    }
+}
+
+function persistDiary(diary) {
+    localStorage.setItem('diaryEntries', JSON.stringify(diary));
+}
+
+function getDateParam() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('date') || new Date().toISOString().slice(0, 10);
 }
 
 function findProductFromParams() {
     const params = new URLSearchParams(window.location.search);
+    const entryId = params.get('entryId');
     const barcode = params.get('barcode');
     const manual = params.get('manual');
+    const diary = readDiary();
+    const dateKey = getDateParam();
+
+    if (entryId && diary[dateKey]) {
+        const found = diary[dateKey].products?.find((item) => item.id === entryId);
+        if (found) {
+            return {
+                ...DEFAULT_PRODUCT,
+                ...found.base,
+                ...found,
+                caloriesPer100: found.base?.caloriesPer100 ?? found.caloriesPer100 ?? found.calories,
+                proteinsPer100: found.base?.proteinsPer100 ?? found.proteinsPer100 ?? found.proteins,
+                fatsPer100: found.base?.fatsPer100 ?? found.fatsPer100 ?? found.fats,
+                carbsPer100: found.base?.carbsPer100 ?? found.carbsPer100 ?? found.carbs,
+            };
+        }
+    }
+
+    if (barcode) {
+        const catalogMatch = PRODUCT_CATALOG.find((item) => item.barcode === barcode);
+        if (catalogMatch) return { ...catalogMatch };
+    }
 
     if (manual) {
         return { ...DEFAULT_PRODUCT };
     }
 
-    if (barcode) {
-        const found = PRODUCT_CATALOG.find((item) => item.barcode === barcode);
-        if (found) return { ...found };
-    }
-
     try {
         const stored = localStorage.getItem('selectedProduct');
-        if (stored) {
-            return JSON.parse(stored);
-        }
+        if (stored) return { ...JSON.parse(stored) };
     } catch (e) {
-        console.error('Не удалось прочитать сохраненный продукт', e);
+        console.error('Не удалось прочитать выбранный продукт', e);
     }
 
     return { ...DEFAULT_PRODUCT };
 }
 
-function updateBaseFromFields() {
-    const weight = normalizeNumber(weightInput.value);
-    if (!weight) return;
-
-    baseProduct.caloriesPer100 = (normalizeNumber(caloriesInput.value) / weight) * 100;
-    baseProduct.proteinsPer100 = (normalizeNumber(proteinsInput.value) / weight) * 100;
-    baseProduct.fatsPer100 = (normalizeNumber(fatsInput.value) / weight) * 100;
-    baseProduct.carbsPer100 = (normalizeNumber(carbsInput.value) / weight) * 100;
+function updatePortionView(product, weight) {
+    const factor = weight / 100;
+    document.getElementById('portion-calories').textContent = Math.round(product.caloriesPer100 * factor) || 0;
+    document.getElementById('portion-proteins').textContent = (product.proteinsPer100 * factor || 0).toFixed(1);
+    document.getElementById('portion-fats').textContent = (product.fatsPer100 * factor || 0).toFixed(1);
+    document.getElementById('portion-carbs').textContent = (product.carbsPer100 * factor || 0).toFixed(1);
 }
 
-function updatePortion(weight) {
-    const portionFactor = weight / 100;
-    caloriesInput.value = Math.round(baseProduct.caloriesPer100 * portionFactor);
-    proteinsInput.value = +(baseProduct.proteinsPer100 * portionFactor).toFixed(1);
-    fatsInput.value = +(baseProduct.fatsPer100 * portionFactor).toFixed(1);
-    carbsInput.value = +(baseProduct.carbsPer100 * portionFactor).toFixed(1);
+function hydrateForm(product) {
+    const nameInput = document.getElementById('product-name');
+    const weightInput = document.getElementById('product-weight');
+    const barcodeInput = document.getElementById('product-barcode');
+    const caloriesInput = document.getElementById('product-calories');
+    const proteinsInput = document.getElementById('product-proteins');
+    const fatsInput = document.getElementById('product-fats');
+    const carbsInput = document.getElementById('product-carbs');
+
+    document.getElementById('product-title').textContent = product.name || 'Продукт';
+    document.getElementById('mode-hint').textContent = product.barcode
+        ? 'КБЖУ подгружены по штрихкоду'
+        : 'Введите значения вручную, если продукт не найден';
+
+    nameInput.value = product.name || '';
+    weightInput.value = product.weight || product.defaultWeight || 100;
+    barcodeInput.value = product.barcode || '';
+    caloriesInput.value = product.caloriesPer100 ?? '';
+    proteinsInput.value = product.proteinsPer100 ?? '';
+    fatsInput.value = product.fatsPer100 ?? '';
+    carbsInput.value = product.carbsPer100 ?? '';
+
+    updatePortionView(product, normalizeNumber(weightInput.value));
 }
 
-function fillProduct(product) {
-    baseProduct = {
-        ...DEFAULT_PRODUCT,
-        ...product,
-    };
+function collectFormValues(baseProduct) {
+    const weight =
+        normalizeNumber(document.getElementById('product-weight').value) ||
+        baseProduct.weight ||
+        baseProduct.defaultWeight ||
+        100;
+    const caloriesPer100 = normalizeNumber(document.getElementById('product-calories').value);
+    const proteinsPer100 = normalizeNumber(document.getElementById('product-proteins').value);
+    const fatsPer100 = normalizeNumber(document.getElementById('product-fats').value);
+    const carbsPer100 = normalizeNumber(document.getElementById('product-carbs').value);
 
-    const initialWeight = product.defaultWeight || 100;
-    weightInput.value = initialWeight;
-    productTitle.textContent = product.name || DEFAULT_PRODUCT.name;
-    updatePortion(initialWeight);
-}
+    const factor = weight / 100;
 
-function saveProduct() {
-    const payload = {
+    return {
         id: baseProduct.id || `custom-${Date.now()}`,
-        name: productTitle.textContent,
-        weight: normalizeNumber(weightInput.value),
-        calories: normalizeNumber(caloriesInput.value),
-        proteins: normalizeNumber(proteinsInput.value),
-        fats: normalizeNumber(fatsInput.value),
-        carbs: normalizeNumber(carbsInput.value),
-        base: { ...baseProduct },
+        name: document.getElementById('product-name').value || baseProduct.name,
+        barcode: document.getElementById('product-barcode').value || baseProduct.barcode,
+        weight,
+        calories: Math.round(caloriesPer100 * factor),
+        proteins: +(proteinsPer100 * factor).toFixed(1),
+        fats: +(fatsPer100 * factor).toFixed(1),
+        carbs: +(carbsPer100 * factor).toFixed(1),
+        base: {
+            ...baseProduct,
+            caloriesPer100,
+            proteinsPer100,
+            fatsPer100,
+            carbsPer100,
+        },
     };
+}
 
-    const saved = JSON.parse(localStorage.getItem('savedProducts') || '[]');
-    const existingIndex = saved.findIndex((item) => item.id === payload.id);
+function saveProduct(baseProduct) {
+    const diary = readDiary();
+    const dateKey = getDateParam();
+    const payload = collectFormValues(baseProduct);
 
+    const day = diary[dateKey] || { products: [] };
+    const existingIndex = day.products.findIndex((item) => item.id === payload.id);
     if (existingIndex >= 0) {
-        saved[existingIndex] = payload;
+        day.products[existingIndex] = payload;
     } else {
-        saved.unshift(payload);
+        day.products.unshift(payload);
     }
 
-    localStorage.setItem('savedProducts', JSON.stringify(saved));
+    diary[dateKey] = day;
+    persistDiary(diary);
     localStorage.setItem('selectedProduct', JSON.stringify(payload.base));
-    alert('Продукт сохранен');
+    window.location.href = 'index.html';
 }
 
-function deleteProduct() {
-    const saved = JSON.parse(localStorage.getItem('savedProducts') || '[]');
-    const filtered = saved.filter((item) => item.id !== baseProduct.id);
-    localStorage.setItem('savedProducts', JSON.stringify(filtered));
-    localStorage.removeItem('selectedProduct');
-    alert('Продукт удален');
+function deleteProduct(baseProduct) {
+    const diary = readDiary();
+    const dateKey = getDateParam();
+    const day = diary[dateKey] || { products: [] };
+    const filtered = day.products.filter((item) => item.id !== baseProduct.id);
+    diary[dateKey] = { products: filtered };
+    persistDiary(diary);
     window.location.href = 'index.html';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (!weightInput || !caloriesInput || !proteinsInput || !fatsInput || !carbsInput) {
-        return;
-    }
+    const weightInput = document.getElementById('product-weight');
+    const caloriesInput = document.getElementById('product-calories');
+    const proteinsInput = document.getElementById('product-proteins');
+    const fatsInput = document.getElementById('product-fats');
+    const carbsInput = document.getElementById('product-carbs');
 
     const product = findProductFromParams();
-    fillProduct(product);
+    hydrateForm(product);
 
-    weightInput.addEventListener('input', () => {
-        const weight = normalizeNumber(weightInput.value);
-        updatePortion(weight);
+    weightInput?.addEventListener('input', () => {
+        const updated = {
+            ...product,
+            caloriesPer100: normalizeNumber(caloriesInput.value),
+            proteinsPer100: normalizeNumber(proteinsInput.value),
+            fatsPer100: normalizeNumber(fatsInput.value),
+            carbsPer100: normalizeNumber(carbsInput.value),
+        };
+        updatePortionView(updated, normalizeNumber(weightInput.value));
     });
 
     [caloriesInput, proteinsInput, fatsInput, carbsInput].forEach((input) => {
-        input.addEventListener('input', updateBaseFromFields);
+        input?.addEventListener('input', () => {
+            const updated = {
+                ...product,
+                caloriesPer100: normalizeNumber(caloriesInput.value),
+                proteinsPer100: normalizeNumber(proteinsInput.value),
+                fatsPer100: normalizeNumber(fatsInput.value),
+                carbsPer100: normalizeNumber(carbsInput.value),
+            };
+            updatePortionView(updated, normalizeNumber(weightInput.value));
+        });
     });
 
-    if (saveButton) {
-        saveButton.addEventListener('click', saveProduct);
-    }
-
-    if (deleteButton) {
-        deleteButton.addEventListener('click', deleteProduct);
-    }
+    document.getElementById('save-product')?.addEventListener('click', () => saveProduct(product));
+    document.getElementById('delete-product')?.addEventListener('click', () => deleteProduct(product));
+    document.getElementById('cancel-btn')?.addEventListener('click', () => {
+        window.history.length > 1 ? window.history.back() : (window.location.href = 'index.html');
+    });
 });
