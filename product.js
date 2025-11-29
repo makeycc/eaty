@@ -139,7 +139,14 @@ function hydrateForm(product) {
     updatePortionView(product, normalizeNumber(weightInput.value));
 }
 
-function collectFormValues(baseProduct) {
+function generateEntryId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return `entry-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function collectFormValues(baseProduct, existingEntryId) {
     const weight = normalizeNumber(document.getElementById('product-weight').value);
     const caloriesPer100 = normalizeNumber(document.getElementById('product-calories').value);
     const proteinsPer100 = normalizeNumber(document.getElementById('product-proteins').value);
@@ -149,7 +156,7 @@ function collectFormValues(baseProduct) {
     const factor = weight / 100;
 
     return {
-        id: baseProduct.id || `custom-${Date.now()}`,
+        id: existingEntryId || generateEntryId(),
         name: document.getElementById('product-name').value || baseProduct.name,
         barcode: document.getElementById('product-barcode').value || baseProduct.barcode,
         weight,
@@ -170,7 +177,8 @@ function collectFormValues(baseProduct) {
 function saveProduct(baseProduct) {
     const diary = readDiary();
     const dateKey = getDateParam();
-    const payload = collectFormValues(baseProduct);
+    const entryId = new URLSearchParams(window.location.search).get('entryId');
+    const payload = collectFormValues(baseProduct, entryId);
 
     const day = diary[dateKey] || { products: [] };
     const existingIndex = day.products.findIndex((item) => item.id === payload.id);
