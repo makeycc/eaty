@@ -1,105 +1,176 @@
-// Главная страница
-const supabaseClient = window.supabase
-    ? window.supabase.createClient(
-        'https://iglrrvgntvlubynkzptj.supabase.co',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnbHJydmdudHZsdWJ5bmt6cHRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0MDgwMjAsImV4cCI6MjA3OTk4NDAyMH0.mg_E8yT8yXOcbQDc2C_9oHZCIfNurEFvJKxFZtBjj5w'
-    )
-    : null;
+const DAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
-const MOCK_PRODUCTS = [
-    {
-        id: 'chicken-breast-120',
-        name: 'Грудки Цыпленка-Бройлера Кубик',
-        weight: 120,
-        calories: 198,
-        proteins: 37,
-        fats: 4,
-    },
-    {
-        id: 'global-village-bulgur',
-        name: 'Global Village Булгур',
-        weight: 80,
-        calories: 274,
-        proteins: 9.6,
-        fats: 1.1,
-    },
-];
+function formatDateKey(date) {
+    return date.toISOString().slice(0, 10);
+}
 
-function loadSavedProducts() {
+function readDiary() {
     try {
-        return JSON.parse(localStorage.getItem('savedProducts')) || [];
-    } catch (error) {
-        console.error('Не удалось загрузить сохраненные продукты', error);
-        return [];
+        return JSON.parse(localStorage.getItem('diaryEntries')) || {};
+    } catch (e) {
+        console.error('Не удалось прочитать дневник', e);
+        return {};
     }
 }
 
-async function getProducts() {
-    const savedProducts = loadSavedProducts();
-    if (savedProducts.length) {
-        return savedProducts;
-    }
-
-    if (!supabaseClient) {
-        return MOCK_PRODUCTS;
-    }
-
-    const { data, error } = await supabaseClient.from('products').select('*');
-
-    if (error) {
-        console.error('Ошибка при загрузке данных:', error);
-        return MOCK_PRODUCTS;
-    }
-
-    return data;
+function persistDiary(diary) {
+    localStorage.setItem('diaryEntries', JSON.stringify(diary));
 }
 
-async function loadProducts() {
-    const productList = document.querySelector('.product-list');
-    if (!productList) return;
+function getSelectedDate() {
+    const stored = localStorage.getItem('selectedDate');
+    return stored || formatDateKey(new Date());
+}
 
-    const products = await getProducts();
-    productList.innerHTML = '';
+function setSelectedDate(dateKey) {
+    localStorage.setItem('selectedDate', dateKey);
+}
+
+function getDatesWindow(centerDateKey) {
+    const center = new Date(centerDateKey);
+    const dates = [];
+    for (let offset = -3; offset <= 3; offset += 1) {
+        const d = new Date(center);
+        d.setDate(center.getDate() + offset);
+        dates.push(d);
+    }
+    return dates;
+}
+
+function renderDays(centerDateKey) {
+    const daysContainer = document.getElementById('days');
+    if (!daysContainer) return;
+    daysContainer.innerHTML = '';
+    const dates = getDatesWindow(centerDateKey);
+
+    dates.forEach((date) => {
+        const button = document.createElement('button');
+        const dateKey = formatDateKey(date);
+        const dayLabel = DAY_LABELS[(date.getDay() + 6) % 7];
+        button.className = `day-chip ${dateKey === centerDateKey ? 'active' : ''}`;
+        button.innerHTML = `<span class="day-name">${dayLabel}</span><span class="day-number">${date.getDate()}</span>`;
+        button.addEventListener('click', () => {
+            setSelectedDate(dateKey);
+            renderDays(dateKey);
+            renderDiary(dateKey);
+        });
+        daysContainer.appendChild(button);
+    });
+}
+
+function sumMacros(entries) {
+    return entries.reduce(
+        (acc, item) => {
+            acc.calories += item.calories || 0;
+            acc.proteins += item.proteins || 0;
+            acc.fats += item.fats || 0;
+            acc.carbs += item.carbs || 0;
+            return acc;
+        },
+        { calories: 0, proteins: 0, fats: 0, carbs: 0 }
+    );
+}
+
+function renderStats(entries) {
+    const totals = sumMacros(entries);
+    document.getElementById('stat-calories').textContent = Math.round(totals.calories);
+    document.getElementById('stat-proteins').textContent = totals.proteins.toFixed(1);
+    document.getElementById('stat-fats').textContent = totals.fats.toFixed(1);
+    document.getElementById('stat-carbs').textContent = totals.carbs.toFixed(1);
+}
+
+function renderProducts(dateKey) {
+    const diary = readDiary();
+    const products = diary[dateKey]?.products || [];
+    const list = document.getElementById('product-list');
+    const counter = document.getElementById('entry-count');
+    if (!list) return;
+
+    counter.textContent = `${products.length} продукт${products.length === 1 ? '' : 'ов'}`;
+    list.innerHTML = '';
 
     if (!products.length) {
-        const emptyState = document.createElement('div');
-        emptyState.classList.add('product-item');
-        emptyState.innerHTML = `
-            <div class="product-row">
-                <span class="product-name">Добавьте продукт, чтобы начать считать КБЖУ</span>
-            </div>
-        `;
-        productList.appendChild(emptyState);
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.innerHTML = '<p>Нет записей за этот день</p><p class="muted-label">Добавьте продукт, чтобы рассчитать КБЖУ</p>';
+        list.appendChild(empty);
         return;
     }
 
     products.forEach((product) => {
-        const productItem = document.createElement('div');
-        productItem.classList.add('product-item');
-
-        productItem.innerHTML = `
-            <div class="product-row product-main-row">
-                <span class="product-name">${product.name}</span>
-                <span class="product-weight">${product.weight} г</span>
-                <button class="delete-btn" data-id="${product.id}" aria-label="Удалить продукт">×</button>
+        const item = document.createElement('div');
+        item.className = 'product-row-card';
+        item.innerHTML = `
+            <div class="row-top">
+                <div>
+                    <p class="product-name">${product.name}</p>
+                    <p class="muted-label">${product.weight} г · ${product.base?.name ? 'найдено' : 'вручную'}</p>
+                </div>
+                <div class="actions">
+                    <button class="ghost-btn" data-entry="${product.id}">Редактировать</button>
+                    <button class="icon-btn" aria-label="Удалить" data-delete="${product.id}">✕</button>
+                </div>
             </div>
-            <div class="product-row product-sub-row">
-                <span class="product-kbiju">${product.calories} · ${product.proteins} · ${product.fats}</span>
-                <span class="product-calories">${product.calories} Ккал</span>
+            <div class="row-bottom">
+                <span>${Math.round(product.calories)} ккал</span>
+                <span>${product.proteins.toFixed(1)} Б</span>
+                <span>${product.fats.toFixed(1)} Ж</span>
+                <span>${product.carbs.toFixed(1)} У</span>
             </div>
         `;
+        list.appendChild(item);
+    });
 
-        productList.appendChild(productItem);
+    list.querySelectorAll('[data-delete]').forEach((btn) => {
+        btn.addEventListener('click', () => deleteProduct(dateKey, btn.dataset.delete));
+    });
+    list.querySelectorAll('[data-entry]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            localStorage.setItem('selectedProduct', JSON.stringify(products.find((p) => p.id === btn.dataset.entry)));
+            window.location.href = `product.html?date=${dateKey}&entryId=${btn.dataset.entry}`;
+        });
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadProducts();
+function deleteProduct(dateKey, entryId) {
+    const diary = readDiary();
+    const existing = diary[dateKey]?.products || [];
+    diary[dateKey] = { products: existing.filter((item) => item.id !== entryId) };
+    persistDiary(diary);
+    renderDiary(dateKey);
+}
 
-    const addProductButton = document.querySelector('.add-product-btn');
-    if (addProductButton) {
-        addProductButton.addEventListener('click', () => {
-            window.location.href = 'add-product.html';
-        });
-    }
+function renderDiary(dateKey) {
+    renderProducts(dateKey);
+    const diary = readDiary();
+    renderStats(diary[dateKey]?.products || []);
+}
+
+function navigateDate(offset) {
+    const current = new Date(getSelectedDate());
+    current.setDate(current.getDate() + offset);
+    const nextKey = formatDateKey(current);
+    setSelectedDate(nextKey);
+    renderDays(nextKey);
+    renderDiary(nextKey);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const selectedDate = getSelectedDate();
+    renderDays(selectedDate);
+    renderDiary(selectedDate);
+
+    document.getElementById('prev-day')?.addEventListener('click', () => navigateDate(-1));
+    document.getElementById('next-day')?.addEventListener('click', () => navigateDate(1));
+    document.getElementById('today-btn')?.addEventListener('click', () => {
+        const today = formatDateKey(new Date());
+        setSelectedDate(today);
+        renderDays(today);
+        renderDiary(today);
+    });
+
+    document.getElementById('add-product')?.addEventListener('click', () => {
+        const date = getSelectedDate();
+        window.location.href = `add-product.html?date=${date}`;
+    });
 });
