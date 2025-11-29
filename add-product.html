@@ -7,45 +7,42 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="add-product-page">
-        <header class="page-header">
-            <h1>Добавить продукт</h1>
-        </header>
+    <div class="main-container add-product-container">
+        <h1 class="page-title">Поиск или добавление продукта</h1>
 
-        <section class="scanner-card">
-            <div class="scanner-actions">
-                <button class="camera-button" id="camera-button" aria-label="Открыть камеру для сканирования">
-                    <span class="camera-icon">📷</span>
-                </button>
-                <div class="scanner-text">
-                    <p class="scanner-title">Сканировать штрих-код</p>
-                    <p class="scanner-subtitle">Наведите камеру, чтобы автоматически найти продукт</p>
-                    <p class="scanner-status" id="scanner-status">Камера готова к работе</p>
+        <section class="scanner-section">
+            <div class="scanner-preview">
+                <div class="scanner-frame">
+                    <div class="scanner-corners">
+                        <span class="corner top-left"></span>
+                        <span class="corner top-right"></span>
+                        <span class="corner bottom-left"></span>
+                        <span class="corner bottom-right"></span>
+                    </div>
+                    <div class="scanner-caption">Предпросмотр камеры / сканера</div>
                 </div>
             </div>
+            <p class="scanner-hint">Наведите камеру на штрих-код, чтобы отсканировать продукт</p>
         </section>
 
         <section class="search-section">
-            <form class="search-bar" id="search-form">
-                <input type="text" id="product-search" name="product-search" placeholder="Поиск по названию или штрих-коду" autocomplete="off">
-                <button type="submit" class="primary-btn">Найти</button>
-            </form>
-
-            <div class="search-history">
-                <div class="search-history-header">
-                    <span>История</span>
-                    <button type="button" class="clear-history" id="clear-history">Очистить</button>
-                </div>
-                <div class="search-history-items" aria-live="polite"></div>
+            <label class="field-label" for="product-search">Поиск по названию или штрих-коду</label>
+            <div class="search-row">
+                <input type="text" id="product-search" placeholder="Введите название или код" />
+                <button id="search-btn" class="search-btn">Поиск</button>
             </div>
 
             <div class="search-results">
-                <h3>Результаты поиска</h3>
-                <ul id="results-list" aria-live="polite"></ul>
+                <h3 class="results-title">История и результаты</h3>
+                <ul id="results-list" class="results-list">
+                    <li class="results-item">Грудки Цыпленка-Бройлера Кубик · 120 г</li>
+                    <li class="results-item">Global Village Булгур · 80 г</li>
+                    <li class="results-item muted">Новые результаты появятся после сканирования или поиска</li>
+                </ul>
             </div>
         </section>
 
-        <button class="manual-entry-btn" id="manual-entry">Ручной ввод</button>
+        <button class="manual-entry-btn manual-entry-full" id="manual-entry">Добавить вручную</button>
     </div>
 
     <script src="script.js"></script>
