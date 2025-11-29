@@ -149,27 +149,40 @@ function renderDiary(dateKey) {
     renderStats(diary[dateKey]?.products || []);
 }
 
+async function hydrateFromSupabase(dateKey) {
+    if (!window.diaryApi?.fetchEntriesByDate) return;
+    const remote = await window.diaryApi.fetchEntriesByDate(dateKey);
+    if (!remote) return;
+    const diary = readDiary();
+    diary[dateKey] = { products: remote };
+    persistDiary(diary);
+    renderDiary(dateKey);
+}
+
+function changeDate(dateKey) {
+    setSelectedDate(dateKey);
+    renderDays(dateKey);
+    renderDiary(dateKey);
+    hydrateFromSupabase(dateKey);
+}
+
 function navigateDate(offset) {
     const current = new Date(getSelectedDate());
     current.setDate(current.getDate() + offset);
-    const nextKey = formatDateKey(current);
-    setSelectedDate(nextKey);
-    renderDays(nextKey);
-    renderDiary(nextKey);
+    changeDate(formatDateKey(current));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const selectedDate = getSelectedDate();
     renderDays(selectedDate);
     renderDiary(selectedDate);
+    hydrateFromSupabase(selectedDate);
 
     document.getElementById('prev-day')?.addEventListener('click', () => navigateDate(-1));
     document.getElementById('next-day')?.addEventListener('click', () => navigateDate(1));
     document.getElementById('today-btn')?.addEventListener('click', () => {
         const today = formatDateKey(new Date());
-        setSelectedDate(today);
-        renderDays(today);
-        renderDiary(today);
+        changeDate(today);
     });
 
     document.getElementById('add-product')?.addEventListener('click', () => {

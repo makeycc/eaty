@@ -114,6 +114,35 @@ function findProductFromParams() {
     return { ...DEFAULT_PRODUCT };
 }
 
+async function hydrateFromSupabaseIfNeeded(currentProduct) {
+    const params = new URLSearchParams(window.location.search);
+    const entryId = params.get('entryId');
+    if (!entryId || !window.diaryApi?.fetchEntriesByDate) return currentProduct;
+
+    const remoteEntries = await window.diaryApi.fetchEntriesByDate(getDateParam());
+    if (!remoteEntries) return currentProduct;
+
+    const diary = readDiary();
+    diary[getDateParam()] = { products: remoteEntries };
+    persistDiary(diary);
+
+    const match = remoteEntries.find((item) => item.id === entryId);
+    if (!match) return currentProduct;
+
+    const merged = {
+        ...DEFAULT_PRODUCT,
+        ...match.base,
+        ...match,
+        caloriesPer100: match.base?.caloriesPer100 ?? match.base?.calories ?? match.calories,
+        proteinsPer100: match.base?.proteinsPer100 ?? match.base?.proteins ?? match.proteins,
+        fatsPer100: match.base?.fatsPer100 ?? match.fats,
+        carbsPer100: match.base?.carbsPer100 ?? match.carbs,
+    };
+
+    hydrateForm(merged);
+    return merged;
+}
+
 function updatePortionView(product, weightInputValue) {
     const weight = resolveWeight(product, weightInputValue);
     const factor = weight / 100;
@@ -176,7 +205,7 @@ function collectFormValues(baseProduct) {
     };
 }
 
-function saveProduct(baseProduct) {
+async function saveProduct(baseProduct) {
     const diary = readDiary();
     const dateKey = getDateParam();
     const payload = collectFormValues(baseProduct);
@@ -192,28 +221,39 @@ function saveProduct(baseProduct) {
     diary[dateKey] = day;
     persistDiary(diary);
     localStorage.setItem('selectedProduct', JSON.stringify(payload.base));
+
+    if (window.diaryApi?.upsertEntry) {
+        window.diaryApi.upsertEntry(dateKey, payload);
+    }
+
     window.location.href = 'index.html';
 }
 
-function deleteProduct(baseProduct) {
+async function deleteProduct(baseProduct) {
     const diary = readDiary();
     const dateKey = getDateParam();
     const day = diary[dateKey] || { products: [] };
     const filtered = day.products.filter((item) => item.id !== baseProduct.id);
     diary[dateKey] = { products: filtered };
     persistDiary(diary);
+
+    if (window.diaryApi?.removeEntry) {
+        window.diaryApi.removeEntry(baseProduct.id);
+    }
+
     window.location.href = 'index.html';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const weightInput = document.getElementById('product-weight');
     const caloriesInput = document.getElementById('product-calories');
     const proteinsInput = document.getElementById('product-proteins');
     const fatsInput = document.getElementById('product-fats');
     const carbsInput = document.getElementById('product-carbs');
 
-    const product = findProductFromParams();
+    let product = findProductFromParams();
     hydrateForm(product);
+    product = await hydrateFromSupabaseIfNeeded(product);
 
     weightInput?.addEventListener('input', () => {
         const updated = {
