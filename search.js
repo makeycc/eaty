@@ -31,6 +31,11 @@ const MOCK_PRODUCTS = [
     },
 ];
 
+function getDateParam() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('date') || localStorage.getItem('selectedDate') || new Date().toISOString().slice(0, 10);
+}
+
 function loadHistory() {
     try {
         return JSON.parse(localStorage.getItem('searchHistory')) || [];
@@ -40,115 +45,113 @@ function loadHistory() {
     }
 }
 
-function persistHistory(history) {
-    localStorage.setItem('searchHistory', JSON.stringify(history.slice(0, 10)));
+function saveHistory(history) {
+    localStorage.setItem('searchHistory', JSON.stringify(history.slice(0, 8)));
 }
 
-function addHistoryEntry(query) {
-    const trimmed = query.trim();
-    if (!trimmed) return;
-
-    const history = loadHistory();
-    const updatedHistory = [trimmed, ...history.filter((item) => item !== trimmed)];
-    persistHistory(updatedHistory);
+function addToHistory(query) {
+    const normalized = query.trim();
+    if (!normalized) return;
+    const current = loadHistory();
+    const updated = [normalized, ...current.filter((item) => item !== normalized)];
+    saveHistory(updated);
 }
 
-function renderHistory(listElement) {
+function renderHistory(container) {
     const history = loadHistory();
-    listElement.innerHTML = '';
-
+    container.innerHTML = '';
     if (!history.length) {
-        const emptyItem = document.createElement('li');
-        emptyItem.classList.add('search-history-empty');
-        emptyItem.textContent = 'История поиска пуста';
-        listElement.appendChild(emptyItem);
+        container.innerHTML = '<span class="muted-label">История пуста</span>';
         return;
     }
-
-    history.forEach((entry) => {
-        const item = document.createElement('li');
-        item.classList.add('search-history-item');
-        item.textContent = entry;
-        item.addEventListener('click', () => {
-            const searchInput = document.getElementById('product-search');
-            searchInput.value = entry;
-            performSearch(entry);
-        });
-        listElement.appendChild(item);
+    history.forEach((item) => {
+        const pill = document.createElement('button');
+        pill.className = 'history-pill';
+        pill.textContent = item;
+        pill.addEventListener('click', () => performSearch(item));
+        container.appendChild(pill);
     });
 }
 
 function renderResults(results, listElement) {
     listElement.innerHTML = '';
-
     if (!results.length) {
-        const emptyItem = document.createElement('li');
-        emptyItem.classList.add('search-result-empty');
-        emptyItem.textContent = 'Ничего не найдено';
-        listElement.appendChild(emptyItem);
+        const empty = document.createElement('li');
+        empty.className = 'results-item muted';
+        empty.textContent = 'Ничего не найдено';
+        listElement.appendChild(empty);
         return;
     }
 
     results.forEach((product) => {
         const item = document.createElement('li');
-        item.classList.add('search-result-item');
+        item.className = 'results-item';
         item.innerHTML = `
             <div class="result-title">${product.name}</div>
-            <div class="result-meta">${product.caloriesPer100} Ккал · ${product.proteinsPer100} Б · ${product.fatsPer100} Ж · ${product.carbsPer100} У</div>
+            <div class="muted-label">${product.caloriesPer100} ккал · ${product.proteinsPer100} Б · ${product.fatsPer100} Ж · ${product.carbsPer100} У</div>
         `;
-        item.addEventListener('click', () => selectProduct(product));
+        item.addEventListener('click', () => {
+            localStorage.setItem('selectedProduct', JSON.stringify(product));
+            window.location.href = `product.html?date=${getDateParam()}`;
+        });
         listElement.appendChild(item);
     });
 }
 
-function selectProduct(product) {
-    localStorage.setItem('selectedProduct', JSON.stringify(product));
-    window.location.href = 'product.html?source=search';
-}
+function performSearch(rawQuery) {
+    const query = rawQuery.trim().toLowerCase();
+    const list = document.getElementById('results-list');
 
-function performSearch(query) {
-    const normalized = query.trim().toLowerCase();
-    const resultsList = document.getElementById('results-list');
-
-    if (!normalized) {
-        renderResults([], resultsList);
+    if (!query) {
+        renderResults([], list);
         return;
     }
 
-    const results = MOCK_PRODUCTS.filter((product) => {
-        return (
-            product.name.toLowerCase().includes(normalized) ||
-            product.barcode.toLowerCase().includes(normalized)
-        );
-    });
+    const matches = MOCK_PRODUCTS.filter(
+        (product) => product.name.toLowerCase().includes(query) || product.barcode.includes(query)
+    );
+    addToHistory(rawQuery);
+    renderHistory(document.getElementById('history-items'));
+    renderResults(matches, list);
+}
 
-    addHistoryEntry(query);
-    renderHistory(document.getElementById('history-list'));
-    renderResults(results, resultsList);
+function simulateScan() {
+    const status = document.getElementById('scan-status');
+    status.textContent = 'Сканируем...';
+    const result = MOCK_PRODUCTS[Math.floor(Math.random() * MOCK_PRODUCTS.length)];
+    setTimeout(() => {
+        status.textContent = 'Код считан';
+        localStorage.setItem('selectedProduct', JSON.stringify(result));
+        window.location.href = `product.html?date=${getDateParam()}&barcode=${result.barcode}`;
+    }, 600);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('product-search');
     const searchButton = document.getElementById('search-btn');
-    const resultsList = document.getElementById('results-list');
-    const historyList = document.getElementById('history-list');
-    const manualEntryButton = document.getElementById('manual-entry');
+    const historyContainer = document.getElementById('history-items');
+    const manualButton = document.getElementById('manual-entry');
+    const clearHistoryButton = document.getElementById('clear-history');
 
-    if (!searchInput || !searchButton || !resultsList || !historyList || !manualEntryButton) {
-        return;
-    }
+    renderHistory(historyContainer);
 
-    renderHistory(historyList);
-
-    searchButton.addEventListener('click', () => performSearch(searchInput.value));
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            performSearch(searchInput.value);
-        }
+    searchButton?.addEventListener('click', () => performSearch(searchInput.value));
+    searchInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') performSearch(searchInput.value);
     });
 
-    manualEntryButton.addEventListener('click', () => {
+    manualButton?.addEventListener('click', () => {
         localStorage.removeItem('selectedProduct');
-        window.location.href = 'product.html?manual=1';
+        window.location.href = `product.html?date=${getDateParam()}&manual=1`;
+    });
+
+    clearHistoryButton?.addEventListener('click', () => {
+        saveHistory([]);
+        renderHistory(historyContainer);
+    });
+
+    document.getElementById('scan-btn')?.addEventListener('click', simulateScan);
+    document.getElementById('back-home')?.addEventListener('click', () => {
+        window.location.href = 'index.html';
     });
 });

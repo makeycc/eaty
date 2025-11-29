@@ -2,82 +2,58 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Главный экран</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Дневник питания</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="main-container">
-        <div class="header">
-            <h1>Сегодня</h1>
-        </div>
+    <div class="app-shell">
+        <header class="page-header">
+            <div>
+                <p class="muted-label">Календарь</p>
+                <h1>Мой рацион</h1>
+            </div>
+            <button class="ghost-btn" id="today-btn" aria-label="Сегодня">Сегодня</button>
+        </header>
 
-        <!-- Слайдер недели -->
-        <div class="slider">
-            <button class="slider-btn" id="prev-day">←</button>
-            <div class="slider-days">
-                <button class="day" id="day-1">П</button>
-                <button class="day" id="day-2">В</button>
-                <button class="day" id="day-3">С</button>
-                <button class="day" id="day-4">Ч</button>
-                <button class="day" id="day-5">П</button>
-                <button class="day" id="day-6">С</button>
-                <button class="day" id="day-7">В</button>
-            </div>
-            <button class="slider-btn" id="next-day">→</button>
-        </div>
+        <section class="day-slider" aria-label="Выбор дня">
+            <button class="slider-pill" id="prev-day" aria-label="Предыдущий день">‹</button>
+            <div class="days" id="days"></div>
+            <button class="slider-pill" id="next-day" aria-label="Следующий день">›</button>
+        </section>
 
-        <!-- КБЖУ статистика -->
-        <div class="kbiju-stats">
-            <div class="kbiju-item">
-                <span class="kbiju-label">Белки</span>
-                <span class="kbiju-value">140</span>
+        <section class="summary" aria-label="Сводка КБЖУ">
+            <div class="summary-card">
+                <p class="muted-label">Калории</p>
+                <p class="value" id="stat-calories">0</p>
+                <p class="unit">ккал</p>
             </div>
-            <div class="kbiju-item">
-                <span class="kbiju-label">Жиры</span>
-                <span class="kbiju-value">120</span>
+            <div class="summary-card">
+                <p class="muted-label">Белки</p>
+                <p class="value" id="stat-proteins">0</p>
+                <p class="unit">г</p>
             </div>
-            <div class="kbiju-item">
-                <span class="kbiju-label">Углеводы</span>
-                <span class="kbiju-value">450</span>
+            <div class="summary-card">
+                <p class="muted-label">Жиры</p>
+                <p class="value" id="stat-fats">0</p>
+                <p class="unit">г</p>
             </div>
-            <div class="kbiju-item">
-                <span class="kbiju-label">Ккал</span>
-                <span class="kbiju-value">3635</span>
+            <div class="summary-card">
+                <p class="muted-label">Углеводы</p>
+                <p class="value" id="stat-carbs">0</p>
+                <p class="unit">г</p>
             </div>
-        </div>
+        </section>
 
-        <!-- Список добавленных продуктов -->
-        <div class="product-list">
-            <div class="product-item">
-                <div class="product-row product-main-row">
-                    <span class="product-name">Грудки Цыпленка-Бройлера Кубик</span>
-                    <span class="product-weight">120 г</span>
-                    <button class="delete-btn" aria-label="Удалить продукт">×</button>
-                </div>
-                <div class="product-row product-sub-row">
-                    <span class="product-kbiju">280 · 240 · 900</span>
-                    <span class="product-calories">3635 Ккал</span>
-                </div>
+        <section class="list-section">
+            <div class="section-header">
+                <h2>Сегодняшние продукты</h2>
+                <span class="muted-label" id="entry-count">0 продуктов</span>
             </div>
-            <div class="product-item">
-                <div class="product-row product-main-row">
-                    <span class="product-name">Global Village Булгур</span>
-                    <span class="product-weight">80 г</span>
-                    <button class="delete-btn" aria-label="Удалить продукт">×</button>
-                </div>
-                <div class="product-row product-sub-row">
-                    <span class="product-kbiju">280 · 240 · 900</span>
-                    <span class="product-calories">3635 Ккал</span>
-                </div>
-            </div>
-        </div>
+            <div class="product-list" id="product-list" aria-live="polite"></div>
+        </section>
 
-        <!-- Кнопка добавления нового продукта -->
-        <button class="add-product-btn">
-            <span class="btn-label">Добавить продукт</span>
-            <span class="btn-icon">+</span>
-        </button>
+        <button class="primary-action" id="add-product">Добавить продукт</button>
     </div>
 
     <script src="script.js"></script>
