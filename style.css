@@ -32,7 +32,8 @@ body {
 .app-shell {
     max-width: 720px;
     margin: 0 auto;
-    padding: 16px 16px 24px 16px;
+    padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right))
+        calc(24px + var(--safe-bottom)) calc(16px + var(--safe-left));
 }
 
 .page-header {
@@ -92,6 +93,7 @@ body {
     padding: 2px 2px 6px;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
+    min-width: 0;
 }
 .days::-webkit-scrollbar {
     display: none;
@@ -226,6 +228,7 @@ body {
 .primary-action {
     width: 100%;
     margin-top: 14px;
+    margin-bottom: var(--safe-bottom);
     padding: 14px;
     background: linear-gradient(135deg, #22c55e, #16a34a);
     color: #fff;

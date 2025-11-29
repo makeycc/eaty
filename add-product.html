@@ -13,12 +13,12 @@
                 <p class="muted-label">Добавление</p>
                 <h1>Найти или отсканировать</h1>
             </div>
-            <button class="ghost-btn" id="back-home">На главную</button>
+            <button class="ghost-btn" id="back-home" type="button">На главную</button>
         </header>
 
         <section class="scanner-card">
             <div class="scanner-actions">
-                <button class="camera-button" id="scan-btn" aria-label="Сканировать штрихкод">📷</button>
+                <button class="camera-button" id="scan-btn" aria-label="Сканировать штрихкод" type="button">📷</button>
                 <div class="scanner-text">
                     <p class="scanner-title">Сканировать штрихкод</p>
                     <p class="scanner-subtitle">Откройте камеру, чтобы быстро найти продукт</p>
@@ -30,12 +30,12 @@
         <section class="search-section">
             <div class="search-bar">
                 <input id="product-search" type="text" placeholder="Поиск по названию или штрихкоду" />
-                <button class="primary-btn" id="search-btn">Найти</button>
+                <button class="primary-btn" id="search-btn" type="button">Найти</button>
             </div>
             <div class="search-history">
                 <div class="search-history-header">
                     <span>Недавнее</span>
-                    <button class="clear-history" id="clear-history">Очистить</button>
+                    <button class="clear-history" id="clear-history" type="button">Очистить</button>
                 </div>
                 <div id="history-items" class="search-history-items"></div>
             </div>
@@ -43,7 +43,7 @@
                 <h3>Результаты</h3>
                 <ul id="results-list"></ul>
             </div>
-            <button class="manual-entry-btn" id="manual-entry">Добавить вручную</button>
+            <button class="manual-entry-btn" id="manual-entry" type="button">Добавить вручную</button>
         </section>
     </div>
     <script src="search.js"></script>
