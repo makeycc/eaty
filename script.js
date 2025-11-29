@@ -8,22 +8,24 @@ async function getProducts() {
     const { data, error } = await supabase
         .from('products') // Название таблицы
         .select('*');
-    
+
     if (error) {
         console.error('Ошибка при загрузке данных:', error);
-        return;
+        return [];
     }
-    
-    return data;
+
+    return data || [];
 }
 
 // Функция для отображения продуктов на главной странице
 async function loadProducts() {
     const products = await getProducts();
     const productList = document.querySelector('.product-list');
-    
+
+    if (!productList) return;
+
     productList.innerHTML = ''; // Очистить список перед добавлением новых продуктов
-    
+
     products.forEach(product => {
         const productItem = document.createElement('div');
         productItem.classList.add('product-item');
@@ -50,35 +52,130 @@ if (document.querySelector('.product-list')) {
 }
 
 // Обработчик для добавления нового продукта на главной странице
-document.querySelector('.add-product-btn').addEventListener('click', function() {
-    alert('Перехожу на страницу добавления продукта');
-});
+const addProductBtn = document.querySelector('.add-product-btn');
+if (addProductBtn) {
+    addProductBtn.addEventListener('click', function () {
+        window.location.href = 'add-product.html';
+    });
+}
 
 // Страница продукта - сохранение и удаление
-document.getElementById('save-product').addEventListener('click', function() {
-    const calories = document.getElementById('product-calories').value;
-    const proteins = document.getElementById('product-proteins').value;
-    const fats = document.getElementById('product-fats').value;
-    const carbs = document.getElementById('product-carbs').value;
-    const weight = document.getElementById('product-weight').value;
+const saveProductBtn = document.getElementById('save-product');
+if (saveProductBtn) {
+    saveProductBtn.addEventListener('click', function () {
+        const calories = document.getElementById('product-calories').value;
+        const proteins = document.getElementById('product-proteins').value;
+        const fats = document.getElementById('product-fats').value;
+        const carbs = document.getElementById('product-carbs').value;
+        const weight = document.getElementById('product-weight').value;
 
-    console.log(`Сохранено: Калории: ${calories}, Белки: ${proteins}, Жиры: ${fats}, Углеводы: ${carbs}, Вес: ${weight}`);
-    alert('Продукт сохранен');
-});
+        console.log(`Сохранено: Калории: ${calories}, Белки: ${proteins}, Жиры: ${fats}, Углеводы: ${carbs}, Вес: ${weight}`);
+        alert('Продукт сохранен');
+    });
+}
 
-document.getElementById('delete-product').addEventListener('click', function() {
-    alert('Продукт удален');
-});
+const deleteProductBtn = document.getElementById('delete-product');
+if (deleteProductBtn) {
+    deleteProductBtn.addEventListener('click', function () {
+        alert('Продукт удален');
+    });
+}
 
 // Страница поиска и ручного ввода
-document.getElementById('search-btn').addEventListener('click', function() {
-    const searchQuery = document.getElementById('product-search').value;
-    alert('Поиск по запросу: ' + searchQuery);
+const searchForm = document.getElementById('search-form');
+const searchInput = document.getElementById('product-search');
+const resultsList = document.getElementById('results-list');
+const searchHistoryContainer = document.querySelector('.search-history-items');
+const clearHistoryBtn = document.getElementById('clear-history');
+const manualEntryBtn = document.getElementById('manual-entry');
+const cameraButton = document.getElementById('camera-button');
+const scannerStatus = document.getElementById('scanner-status');
+let searchHistory = ['Гречка', 'Кефир 1%', 'Яйцо куриное'];
 
-    // Здесь можно добавить логику для обработки поисковых запросов
-    // Пример: отображение результатов поиска на основе введённого запроса
-});
+function renderHistory() {
+    if (!searchHistoryContainer) return;
 
-document.getElementById('manual-entry').addEventListener('click', function() {
-    alert('Перехожу в форму ручного ввода');
-});
+    searchHistoryContainer.innerHTML = '';
+
+    if (searchHistory.length === 0) {
+        const emptyState = document.createElement('span');
+        emptyState.textContent = 'Нет запросов';
+        emptyState.className = 'history-empty';
+        searchHistoryContainer.appendChild(emptyState);
+        return;
+    }
+
+    searchHistory.forEach((term) => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'history-pill';
+        pill.textContent = term;
+        pill.addEventListener('click', () => {
+            if (searchInput) {
+                searchInput.value = term;
+                performSearch(term);
+            }
+        });
+        searchHistoryContainer.appendChild(pill);
+    });
+}
+
+function performSearch(query) {
+    if (!resultsList) return;
+
+    const cleanQuery = query.trim();
+    resultsList.innerHTML = '';
+
+    if (!cleanQuery) {
+        resultsList.innerHTML = '<li>Введите запрос для поиска продукта</li>';
+        return;
+    }
+
+    const listItem = document.createElement('li');
+    listItem.textContent = `Результаты по запросу: "${cleanQuery}" (заглушка)`;
+    resultsList.appendChild(listItem);
+}
+
+if (searchForm && searchInput) {
+    searchForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const query = searchInput.value;
+        if (!query.trim()) {
+            performSearch('');
+            return;
+        }
+
+        performSearch(query);
+
+        if (!searchHistory.includes(query)) {
+            searchHistory = [query, ...searchHistory].slice(0, 10);
+            renderHistory();
+        }
+    });
+}
+
+if (clearHistoryBtn) {
+    clearHistoryBtn.addEventListener('click', () => {
+        searchHistory = [];
+        renderHistory();
+    });
+}
+
+if (manualEntryBtn) {
+    manualEntryBtn.addEventListener('click', () => {
+        window.location.href = 'product.html';
+    });
+}
+
+if (cameraButton && scannerStatus) {
+    cameraButton.addEventListener('click', () => {
+        scannerStatus.textContent = 'Идёт сканирование штрих-кода...';
+        console.log('Запуск сканера: инициализация камеры или вызов SDK');
+
+        setTimeout(() => {
+            scannerStatus.textContent = 'Штрих-код не найден. Попробуйте ещё раз.';
+        }, 1500);
+    });
+}
+
+renderHistory();
