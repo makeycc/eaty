@@ -140,6 +140,11 @@ function hydrateForm(product) {
 }
 
 function collectFormValues(baseProduct) {
+    const weight =
+        normalizeNumber(document.getElementById('product-weight').value) ||
+        baseProduct.weight ||
+        baseProduct.defaultWeight ||
+        100;
     const weight = normalizeNumber(document.getElementById('product-weight').value);
     const caloriesPer100 = normalizeNumber(document.getElementById('product-calories').value);
     const proteinsPer100 = normalizeNumber(document.getElementById('product-proteins').value);
