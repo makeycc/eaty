@@ -7,42 +7,29 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="main-container add-product-container">
-        <h1 class="page-title">Поиск или добавление продукта</h1>
+    <div class="search-container">
+        <h1>Поиск или добавление продукта</h1>
+        
+        <div class="search-input">
+            <input type="text" id="product-search" placeholder="Поиск по названию или штрих-коду" />
+            <button id="search-btn">Поиск</button>
+        </div>
+        
+        <div class="search-results">
+            <h3>Результаты поиска:</h3>
+            <ul id="results-list">
+                <!-- Результаты поиска продуктов -->
+            </ul>
+        </div>
 
-        <section class="scanner-section">
-            <div class="scanner-preview">
-                <div class="scanner-frame">
-                    <div class="scanner-corners">
-                        <span class="corner top-left"></span>
-                        <span class="corner top-right"></span>
-                        <span class="corner bottom-left"></span>
-                        <span class="corner bottom-right"></span>
-                    </div>
-                    <div class="scanner-caption">Предпросмотр камеры / сканера</div>
-                </div>
-            </div>
-            <p class="scanner-hint">Наведите камеру на штрих-код, чтобы отсканировать продукт</p>
-        </section>
-
-        <section class="search-section">
-            <label class="field-label" for="product-search">Поиск по названию или штрих-коду</label>
-            <div class="search-row">
-                <input type="text" id="product-search" placeholder="Введите название или код" />
-                <button id="search-btn" class="search-btn">Поиск</button>
-            </div>
-
-            <div class="search-results">
-                <h3 class="results-title">История и результаты</h3>
-                <ul id="results-list" class="results-list">
-                    <li class="results-item">Грудки Цыпленка-Бройлера Кубик · 120 г</li>
-                    <li class="results-item">Global Village Булгур · 80 г</li>
-                    <li class="results-item muted">Новые результаты появятся после сканирования или поиска</li>
-                </ul>
-            </div>
-        </section>
-
-        <button class="manual-entry-btn manual-entry-full" id="manual-entry">Добавить вручную</button>
+        <div class="search-history">
+            <h3>История поиска:</h3>
+            <ul id="history-list">
+                <!-- История запросов -->
+            </ul>
+        </div>
+        
+        <button class="manual-entry-btn" id="manual-entry">Ручной ввод</button>
     </div>
 
     <script src="script.js"></script>
