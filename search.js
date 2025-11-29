@@ -36,6 +36,7 @@ const BARCODE_FORMATS = ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc
 let cameraStream;
 let scanning = false;
 let barcodeDetector;
+let zxingReader;
 
 function getDateParam() {
     const params = new URLSearchParams(window.location.search);
@@ -61,6 +62,34 @@ function addToHistory(query) {
     const current = loadHistory();
     const updated = [normalized, ...current.filter((item) => item !== normalized)];
     saveHistory(updated);
+}
+
+function readDiary() {
+    try {
+        return JSON.parse(localStorage.getItem('diaryEntries')) || {};
+    } catch (e) {
+        console.error('Не удалось прочитать дневник', e);
+        return {};
+    }
+}
+
+function findLocalProductByBarcode(barcode) {
+    const diary = readDiary();
+    const days = Object.values(diary);
+    for (const day of days) {
+        const match = day.products?.find((item) => item.barcode === barcode);
+        if (match) {
+            return {
+                ...match.base,
+                ...match,
+                caloriesPer100: match.base?.caloriesPer100 ?? match.caloriesPer100 ?? match.calories,
+                proteinsPer100: match.base?.proteinsPer100 ?? match.proteinsPer100 ?? match.proteins,
+                fatsPer100: match.base?.fatsPer100 ?? match.fatsPer100 ?? match.fats,
+                carbsPer100: match.base?.carbsPer100 ?? match.carbsPer100 ?? match.carbs,
+            };
+        }
+    }
+    return null;
 }
 
 function renderHistory(container) {
@@ -128,12 +157,38 @@ function stopScan() {
         cameraStream.getTracks().forEach((track) => track.stop());
         cameraStream = null;
     }
+    zxingReader?.reset?.();
     const video = document.getElementById('scan-video');
     if (video) video.srcObject = null;
 }
 
-function persistFoundProduct(barcode) {
-    const match = MOCK_PRODUCTS.find((item) => item.barcode === barcode);
+async function findKnownProduct(barcode) {
+    const catalogMatch = MOCK_PRODUCTS.find((item) => item.barcode === barcode);
+    if (catalogMatch) return catalogMatch;
+
+    const localMatch = findLocalProductByBarcode(barcode);
+    if (localMatch) return localMatch;
+
+    if (window.diaryApi?.fetchLatestEntryByBarcode) {
+        const remote = await window.diaryApi.fetchLatestEntryByBarcode(barcode);
+        if (remote) {
+            return {
+                ...remote.base,
+                ...remote,
+                caloriesPer100: remote.base?.caloriesPer100 ?? remote.caloriesPer100 ?? remote.calories,
+                proteinsPer100: remote.base?.proteinsPer100 ?? remote.proteinsPer100 ?? remote.proteins,
+                fatsPer100: remote.base?.fatsPer100 ?? remote.fatsPer100 ?? remote.fats,
+                carbsPer100: remote.base?.carbsPer100 ?? remote.carbsPer100 ?? remote.carbs,
+                defaultWeight: remote.base?.defaultWeight || remote.weight || 100,
+            };
+        }
+    }
+
+    return null;
+}
+
+async function persistFoundProduct(barcode) {
+    const match = await findKnownProduct(barcode);
     const payload =
         match || {
             id: `barcode-${barcode}`,
@@ -152,21 +207,35 @@ function persistFoundProduct(barcode) {
 }
 
 async function scanFrame(video) {
-    if (!scanning || !barcodeDetector) return;
+    if (!scanning) return;
     try {
-        const detected = await barcodeDetector.detect(video);
-        if (detected.length) {
-            const code = detected[0]?.rawValue;
-            if (code) {
-                document.getElementById('scan-status').textContent = `Код: ${code}`;
+        if (barcodeDetector) {
+            const detected = await barcodeDetector.detect(video);
+            if (detected.length) {
+                const code = detected[0]?.rawValue;
+                if (code) {
+                    document.getElementById('scan-status').textContent = `Код: ${code}`;
+                    stopScan();
+                    await persistFoundProduct(code);
+                    return;
+                }
+            }
+        } else if (zxingReader) {
+            const result = await zxingReader.decodeFromVideoElement(video);
+            if (result?.text) {
+                document.getElementById('scan-status').textContent = `Код: ${result.text}`;
                 stopScan();
-                persistFoundProduct(code);
+                await persistFoundProduct(result.text);
                 return;
             }
         }
     } catch (e) {
-        console.error('Ошибка сканирования', e);
-        document.getElementById('scan-status').textContent = 'Не удалось считать код';
+        if (e && e.name === 'NotFoundException') {
+            // просто продолжаем сканирование, когда код не найден на текущем кадре
+        } else {
+            console.error('Ошибка сканирования', e);
+            document.getElementById('scan-status').textContent = 'Не удалось считать код';
+        }
     }
 
     if (scanning) requestAnimationFrame(() => scanFrame(video));
@@ -182,13 +251,18 @@ async function startBarcodeScan() {
         return;
     }
 
-    if (!('BarcodeDetector' in window)) {
-        status.textContent = 'Сканирование штрихкодов не поддерживается';
-        return;
+    const hasBarcodeDetector = 'BarcodeDetector' in window;
+    if (!barcodeDetector && hasBarcodeDetector) {
+        barcodeDetector = new window.BarcodeDetector({ formats: BARCODE_FORMATS });
     }
 
-    if (!barcodeDetector) {
-        barcodeDetector = new window.BarcodeDetector({ formats: BARCODE_FORMATS });
+    if (!hasBarcodeDetector) {
+        if (window.ZXingBrowser?.BrowserMultiFormatReader) {
+            zxingReader = zxingReader || new window.ZXingBrowser.BrowserMultiFormatReader();
+        } else {
+            status.textContent = 'Сканирование штрихкодов не поддерживается';
+            return;
+        }
     }
 
     try {

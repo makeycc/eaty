@@ -2,6 +2,12 @@ const SUPABASE_URL = 'https://iglrrvgntvlubynkzptj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnbHJydmdudHZsdWJ5bmt6cHRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0MDgwMjAsImV4cCI6MjA3OTk4NDAyMH0.mg_E8yT8yXOcbQDc2C_9oHZCIfNurEFvJKxFZtBjj5w';
 const SUPABASE_TABLE = 'diary_entries';
 
+function buildUrl(pathname, params = {}) {
+    const url = new URL(`${SUPABASE_URL}${pathname}`);
+    Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+    return url;
+}
+
 function withAuthHeaders(extra = {}) {
     return {
         apikey: SUPABASE_ANON_KEY,
@@ -42,9 +48,10 @@ function adaptRemoteEntry(row) {
 
 async function fetchEntriesByDate(dateKey) {
     try {
-        const url = new URL(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`);
-        url.searchParams.set('date_key', `eq.${dateKey}`);
-        url.searchParams.set('select', '*');
+        const url = buildUrl(`/rest/v1/${SUPABASE_TABLE}`, {
+            date_key: `eq.${dateKey}`,
+            select: '*',
+        });
         const response = await fetch(url.toString(), {
             method: 'GET',
             headers: withAuthHeaders(),
@@ -54,6 +61,27 @@ async function fetchEntriesByDate(dateKey) {
         return data.map(adaptRemoteEntry);
     } catch (error) {
         console.error('Supabase: не удалось загрузить записи', error);
+        return null;
+    }
+}
+
+async function fetchLatestEntryByBarcode(barcode) {
+    try {
+        const url = buildUrl(`/rest/v1/${SUPABASE_TABLE}`, {
+            barcode: `eq.${barcode}`,
+            select: '*',
+            order: 'id.desc',
+            limit: 1,
+        });
+        const response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: withAuthHeaders(),
+        });
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        return data.length ? adaptRemoteEntry(data[0]) : null;
+    } catch (error) {
+        console.error('Supabase: не удалось загрузить продукт по штрихкоду', error);
         return null;
     }
 }
@@ -91,6 +119,7 @@ async function removeEntry(entryId) {
 
 window.diaryApi = {
     fetchEntriesByDate,
+    fetchLatestEntryByBarcode,
     upsertEntry,
     removeEntry,
 };
