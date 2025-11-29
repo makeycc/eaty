@@ -25,7 +25,21 @@ const MOCK_PRODUCTS = [
     },
 ];
 
+function loadSavedProducts() {
+    try {
+        return JSON.parse(localStorage.getItem('savedProducts')) || [];
+    } catch (error) {
+        console.error('Не удалось загрузить сохраненные продукты', error);
+        return [];
+    }
+}
+
 async function getProducts() {
+    const savedProducts = loadSavedProducts();
+    if (savedProducts.length) {
+        return savedProducts;
+    }
+
     if (!supabaseClient) {
         return MOCK_PRODUCTS;
     }
@@ -46,6 +60,18 @@ async function loadProducts() {
 
     const products = await getProducts();
     productList.innerHTML = '';
+
+    if (!products.length) {
+        const emptyState = document.createElement('div');
+        emptyState.classList.add('product-item');
+        emptyState.innerHTML = `
+            <div class="product-row">
+                <span class="product-name">Добавьте продукт, чтобы начать считать КБЖУ</span>
+            </div>
+        `;
+        productList.appendChild(emptyState);
+        return;
+    }
 
     products.forEach((product) => {
         const productItem = document.createElement('div');
