@@ -7,65 +7,78 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="product-container">
-        <h1 id="product-title">Грудки Цыпленка-Бройлера Кубик 120 г</h1>
+    <div class="app-shell">
+        <header class="page-header">
+            <div>
+                <p class="muted-label">Продукт</p>
+                <h1 id="product-title">Новый продукт</h1>
+            </div>
+            <button class="ghost-btn" id="cancel-btn">Отменить</button>
+        </header>
 
-        <div class="product-info">
-            <div class="product-detail">
-                <label for="product-calories">Калории (Ккал) на 100 г</label>
-                <input type="number" id="product-calories" value="280" readonly />
-            </div>
-            <div class="product-detail">
-                <label for="product-proteins">Белки (г) на 100 г</label>
-                <input type="number" id="product-proteins" value="24" readonly />
-            </div>
-            <div class="product-detail">
-                <label for="product-fats">Жиры (г) на 100 г</label>
-                <input type="number" id="product-fats" value="9" readonly />
-            </div>
-            <div class="product-detail">
-                <label for="product-carbs">Углеводы (г) на 100 г</label>
-                <input type="number" id="product-carbs" value="3.6" readonly />
-            </div>
-            <div class="product-detail">
-                <label for="product-weight">Вес порции (г)</label>
-                <input type="number" id="product-weight" value="120" min="0" />
-            </div>
-        </div>
+        <section class="form-card">
+            <label class="field-label" for="product-name">Название</label>
+            <input id="product-name" type="text" placeholder="Например, яблоко" />
 
-        <div class="manual-entry">
-            <p>Нет данных после сканирования? Введите КБЖУ вручную.</p>
-            <button id="manual-entry-toggle">Заполнить вручную</button>
-        </div>
-
-        <div class="portion-block" aria-live="polite">
-            <h2>Пищевая ценность порции</h2>
-            <div class="portion-grid">
-                <div class="portion-detail">
-                    <span class="label">Калории</span>
-                    <span id="portion-calories" class="value">—</span>
+            <div class="two-col">
+                <div>
+                    <label class="field-label" for="product-weight">Вес порции (г)</label>
+                    <input id="product-weight" type="number" inputmode="decimal" min="1" />
                 </div>
-                <div class="portion-detail">
-                    <span class="label">Белки</span>
-                    <span id="portion-proteins" class="value">—</span>
-                </div>
-                <div class="portion-detail">
-                    <span class="label">Жиры</span>
-                    <span id="portion-fats" class="value">—</span>
-                </div>
-                <div class="portion-detail">
-                    <span class="label">Углеводы</span>
-                    <span id="portion-carbs" class="value">—</span>
+                <div>
+                    <label class="field-label" for="product-barcode">Штрихкод</label>
+                    <input id="product-barcode" type="text" inputmode="numeric" placeholder="необязательно" />
                 </div>
             </div>
-        </div>
+
+            <div class="macro-grid">
+                <div class="macro-field">
+                    <label class="field-label" for="product-calories">Калории (ккал) на 100 г</label>
+                    <input id="product-calories" type="number" inputmode="decimal" />
+                </div>
+                <div class="macro-field">
+                    <label class="field-label" for="product-proteins">Белки (г) на 100 г</label>
+                    <input id="product-proteins" type="number" inputmode="decimal" />
+                </div>
+                <div class="macro-field">
+                    <label class="field-label" for="product-fats">Жиры (г) на 100 г</label>
+                    <input id="product-fats" type="number" inputmode="decimal" />
+                </div>
+                <div class="macro-field">
+                    <label class="field-label" for="product-carbs">Углеводы (г) на 100 г</label>
+                    <input id="product-carbs" type="number" inputmode="decimal" />
+                </div>
+            </div>
+
+            <div class="portion-block" aria-live="polite">
+                <h2>Пищевая ценность порции</h2>
+                <div class="portion-grid">
+                    <div class="portion-detail">
+                        <span class="label">Ккал</span>
+                        <span id="portion-calories" class="value">0</span>
+                    </div>
+                    <div class="portion-detail">
+                        <span class="label">Белки</span>
+                        <span id="portion-proteins" class="value">0</span>
+                    </div>
+                    <div class="portion-detail">
+                        <span class="label">Жиры</span>
+                        <span id="portion-fats" class="value">0</span>
+                    </div>
+                    <div class="portion-detail">
+                        <span class="label">Углеводы</span>
+                        <span id="portion-carbs" class="value">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint-line" id="mode-hint"></div>
+        </section>
 
         <div class="product-actions">
-            <button id="save-product">Сохранить</button>
-            <button id="delete-product">Удалить</button>
+            <button class="primary-action" id="save-product">Сохранить</button>
+            <button class="secondary-action" id="delete-product">Удалить</button>
         </div>
-
-        <div id="save-status" role="status" aria-live="polite"></div>
     </div>
 
     <script src="product.js"></script>
